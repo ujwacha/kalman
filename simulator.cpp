@@ -32,26 +32,73 @@ public:
 
 };
 
+
+
+
+class RandomVector {
+public:
+  
+  float m1_, m2_, v1_, c12_, v2_;
+
+  RandomVector(float m1, float m2, float v1, float c12, float v2) {
+    m1_ = m1;
+    m2_ = m2;
+    v1_ = v1;
+    v2_ = v2;
+    c12_ = c12;
+  }
+
+  
+  float l11, l22, l12;
+
+
+  float x, y;
+
+  void set_vector() {
+    // Cholesky Decompositinn
+    l11 = sqrt(v1_);
+    l12 = c12_ / l11;
+
+    if (v2_ - l12*l12 < 0) throw -1;
+
+    l22 = sqrt(v2_ - l12*l12);
+
+    float z1, z2;
+
+    // Define random generator with Gaussian distribution
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();   
+    std::default_random_engine generator(seed);
+    std::normal_distribution<double> dist(0.0, 1.0);
+
+    z1 = dist(generator);
+    z2 = dist(generator);
+
+
+    x = l11*z1;
+    y = l12*z1 + l22*z2;
+
+    x+= m1_;
+    y+= m2_;
+  }
+  
+};
+
+
+
 class Sensor {
 public:
   float th;
   float w;
-  const double mean;
-  const double stddev; 
-
-  Sensor(double sd): mean(0.0), stddev(sd) {
-    
-  }
+  Sensor(): th(0), w(0) {}
 
   void set_data(Pendulum &p) {
-     // random number, gaussian noise
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();   // Define random generator with Gaussian distribution
-    std::default_random_engine generator(seed);
-    std::normal_distribution<double> dist(mean, stddev);
 
-    th = p.th + dist(generator);
-    w = p.w + dist(generator);
-    
+    RandomVector R(0.0, 0.0, 0.01, 0.01, 0.09);
+    R.set_vector();
+
+
+    th = p.th + R.x;
+    w = p.w + R.y;
   }
 };
 
@@ -69,7 +116,7 @@ std::ostream &operator<<(std::ostream &os, Sensor s) {
 
 int main() {
   Pendulum P;
-  Sensor S(0.2);
+  Sensor S;
 
   std::cout << P ;
 
@@ -81,21 +128,4 @@ int main() {
   }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
