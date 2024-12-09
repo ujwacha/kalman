@@ -117,6 +117,10 @@ std::ostream &operator<<(std::ostream &os, Sensor s) {
 }
 
 
+// enum To {
+//   ToPredict,
+//   ToUpdate,
+// }
 
 class KalmanFilter {
 public:
@@ -145,7 +149,8 @@ public:
   int time = 0;
   float period = 0.1f;
 
-  
+  // To todo;
+
   KalmanFilter() {
     state(0,0) = 0.5f;
     state(1,0) = 0.0f;
@@ -161,6 +166,8 @@ public:
     W << 0.0, 0.0, 0.0, 0.0;
     V << 0.09, 0.01, 0.01, 0.3;
 
+    // todo = ToPredict;
+
   };
 
   void popolate_model_jacobian() {
@@ -168,11 +175,13 @@ public:
   }
 
   void popolate_sensor_jacobian() {
-    Jacobian_Model << 1.0f, 0.0f, 0.0f, 1.0f;
+    Jacobian_Sensor << 1.0f, 0.0f, 0.0f, 1.0f;
   }
 
   void predict() {
-    void popolate_model_jacobian();
+    // if (todo != ToPredict) return;
+
+    popolate_model_jacobian();
 
     buffer(0,0) = state(0,0) + period*state(1,0);
     buffer(1,0) = state(1,0) + period*9.81*sin(state(0,0));
@@ -181,11 +190,32 @@ public:
 
     bufferm = Jacobian_Model*state_cov*Jacobian_Model.transpose() + W;
     state_cov = bufferm;
-
+    //todo = ToUpdate;
   }
   
   void update(Sensor s) {
-    
+    //    if (todo != ToUpdate) return;
+
+    popolate_sensor_jacobian();
+
+
+    Eigen::Matrix<float, 2, 1> result;
+    result << s.th, s.w;
+
+    Eigen::Matrix<float, 2, 1> ybar = result - state; // works only now because identity matrix
+
+    Eigen::Matrix<float, 2, 2> S = (Jacobian_Sensor * state_cov * Jacobian_Sensor.transpose()) + V;
+
+    Eigen::Matrix<float, 2, 2> K = state_cov * Jacobian_Sensor.transpose() * S;
+
+    state = state + K*ybar;
+
+    Eigen::Matrix<float, 2, 2> I;
+    I << 1.0, 0.0, 0.0, 1.0;
+
+    state_cov = (I - K*Jacobian_Sensor)*state_cov;
+
+    //todo = ToPredict;
   }
  
 
@@ -194,7 +224,7 @@ public:
 int main() {
   Pendulum P;
   Sensor S;
-
+  KalmanFilter F;
 
  
 
@@ -204,9 +234,13 @@ int main() {
 
   for(int i = 0; i < 100 ; i++) {
     P.tick();
+    F.predict();
     fs << P;
     S.set_data(P);
-    fs << S << std::endl;
+    fs << S;
+    F.update(S);
+    fs << F.state(0,0);
+    fs << std::endl;
   }
 
 
