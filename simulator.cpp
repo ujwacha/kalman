@@ -2,11 +2,12 @@
 #include <math.h>
 #include <random>
 #include <chrono>
+#include <Eigen/Core>
+#include <fstream>
 
 
 class Pendulum {
 public:
-
   // state
   float th;
   float w = 0.0f;
@@ -24,11 +25,6 @@ public:
     th = th + period*w;
     w = w - period*(9.81/1)*sin(th);
   }
-
-
-  // (float, float) get_sensor_data() {
-  //   return (th + dist(generator), w + dist(generator));
-  // }
 
 };
 
@@ -53,6 +49,8 @@ public:
 
 
   float x, y;
+
+
 
   void set_vector() {
     // Cholesky Decompositinn
@@ -89,18 +87,23 @@ class Sensor {
 public:
   float th;
   float w;
+
+  float val;
+  
   Sensor(): th(0), w(0) {}
 
   void set_data(Pendulum &p) {
 
-    RandomVector R(0.0, 0.0, 0.01, 0.01, 0.09);
+    RandomVector R(0.0, 0.0, 0.09, 0.01, 0.3);
     R.set_vector();
 
 
     th = p.th + R.x;
     w = p.w + R.y;
+
   }
 };
+// sensor gives measurements Xt + W, so the jecobian is [1 0] [0 1]
 
 
 std::ostream &operator<<(std::ostream &os, Pendulum p) {
@@ -112,20 +115,100 @@ std::ostream &operator<<(std::ostream &os, Sensor s) {
 
   return os << "\t" << s.th;
 }
+
+
+
+class KalmanFilter {
+public:
+
+  Eigen::Matrix<float, 2, 2> Jacobian_Model;
+  Eigen::Matrix<float, 2, 2> Jacobian_Sensor;
+
+  // RandomVector Sensor_Random = RandomVector(0.0, 0.0, 0.09, 0.01, 0.3);
+  // RandomVector Model_Random = RandomVector(0.0, 0.0, 0.0, 0.0, 0.0);
+
+
+  Eigen::Matrix<float, 2, 1> state;
+  Eigen::Matrix<float, 2, 2> state_cov;
   
+
+  Eigen::Matrix<float, 2, 1> buffer;
+  Eigen::Matrix<float, 2, 2> bufferm;
+
+
+  Eigen::Matrix<float, 2, 1> measurement;
+  Eigen::Matrix<float, 2, 2> measurement_cov;
+
+  Eigen::Matrix<float, 2, 2> V;
+  Eigen::Matrix<float, 2, 2> W;
+
+  int time = 0;
+  float period = 0.1f;
+
+  
+  KalmanFilter() {
+    state(0,0) = 0.5f;
+    state(1,0) = 0.0f;
+
+    state_cov = Eigen::Matrix<float, 2, 2>::Identity();
+    measurement_cov = Eigen::Matrix<float, 2, 2>::Identity();
+
+  // RandomVector Sensor_Random = RandomVector(0.0, 0.0, 0.09, 0.01, 0.3);
+
+    //measurement_cov << 0.09, 0.1, 0.1, 0.3;
+
+
+    W << 0.0, 0.0, 0.0, 0.0;
+    V << 0.09, 0.01, 0.01, 0.3;
+
+  };
+
+  void popolate_model_jacobian() {
+    Jacobian_Model << 1.0, period, (-period)*9.81*cos(state(0,0)), 1.0f;
+  }
+
+  void popolate_sensor_jacobian() {
+    Jacobian_Model << 1.0f, 0.0f, 0.0f, 1.0f;
+  }
+
+  void predict() {
+    void popolate_model_jacobian();
+
+    buffer(0,0) = state(0,0) + period*state(1,0);
+    buffer(1,0) = state(1,0) + period*9.81*sin(state(0,0));
+
+    state = buffer;
+
+    bufferm = Jacobian_Model*state_cov*Jacobian_Model.transpose() + W;
+    state_cov = bufferm;
+
+  }
+  
+  void update(Sensor s) {
+    
+  }
+ 
+
+};
 
 int main() {
   Pendulum P;
   Sensor S;
 
-  std::cout << P ;
+
+ 
+
+  std::ofstream fs("data.txt", std::ios::out);
+
+  fs << P ;
 
   for(int i = 0; i < 100 ; i++) {
     P.tick();
-    std::cout << P;
+    fs << P;
     S.set_data(P);
-    std::cout << S << std::endl;
+    fs << S << std::endl;
   }
 
-}
 
+
+}
