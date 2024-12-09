@@ -3,6 +3,7 @@
 #include <random>
 #include <chrono>
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <fstream>
 
 
@@ -206,7 +207,7 @@ public:
 
     Eigen::Matrix<float, 2, 2> S = (Jacobian_Sensor * state_cov * Jacobian_Sensor.transpose()) + V;
 
-    Eigen::Matrix<float, 2, 2> K = state_cov * Jacobian_Sensor.transpose() * S;
+    Eigen::Matrix<float, 2, 2> K = state_cov * Jacobian_Sensor.transpose() * S.inverse();
 
     state = state + K*ybar;
 
@@ -239,7 +240,7 @@ int main() {
     S.set_data(P);
     fs << S;
     F.update(S);
-    fs << F.state(0,0);
+    fs << "\t" << F.state(0,0);
     fs << std::endl;
   }
 
