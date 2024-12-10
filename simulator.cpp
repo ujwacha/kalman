@@ -25,6 +25,9 @@ public:
     time ++;
     th = th + period*w;
     w = w - period*(9.81/1)*sin(th);
+
+    std::cout << "( " << th << " , " << w << " )"<< std::endl;
+
   }
 
 };
@@ -153,8 +156,11 @@ public:
   To todo;
 
   KalmanFilter() {
-    state(0,0) = 0.5f;
-    state(1,0) = 0.0f;
+ 
+    //     ( 0.363005 , -1.24798 )
+    //( -0.505593 , 0.297231 )
+    state(0,0) = 0.505593f;
+    state(1,0) = -0.297231f;
 
     state_cov = Eigen::Matrix<float, 2, 2>::Identity();
     measurement_cov = Eigen::Matrix<float, 2, 2>::Identity();
