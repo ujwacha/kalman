@@ -118,10 +118,10 @@ std::ostream &operator<<(std::ostream &os, Sensor s) {
 }
 
 
-// enum To {
-//   ToPredict,
-//   ToUpdate,
-// }
+enum To {
+  ToPredict,
+  ToUpdate,
+};
 
 class KalmanFilter {
 public:
@@ -150,7 +150,7 @@ public:
   int time = 0;
   float period = 0.1f;
 
-  // To todo;
+  To todo;
 
   KalmanFilter() {
     state(0,0) = 0.5f;
@@ -180,18 +180,23 @@ public:
   }
 
   void predict() {
-    // if (todo != ToPredict) return;
+    //if (todo != ToPredict) return;
 
     popolate_model_jacobian();
 
-    buffer(0,0) = state(0,0) + period*state(1,0);
-    buffer(1,0) = state(1,0) + period*9.81*sin(state(0,0));
+    state(0,0) = state(0,0) + period*state(1,0);
+    state(1,0) = state(1,0) - period*9.81*sin(state(0,0));
 
-    state = buffer;
 
-    bufferm = Jacobian_Model*state_cov*Jacobian_Model.transpose() + W;
-    state_cov = bufferm;
-    //todo = ToUpdate;
+    // std::cout << "#####" << std::endl;
+    // std::cout << Jacobian_Model << std::endl;
+    // std::cout << "#####" << std::endl;
+
+
+
+    state_cov = Jacobian_Model*state_cov*Jacobian_Model.transpose() + W;
+    //state_cov = bufferm;
+    todo = ToUpdate;
   }
   
   void update(Sensor s) {
@@ -216,7 +221,7 @@ public:
 
     state_cov = (I - K*Jacobian_Sensor)*state_cov;
 
-    //todo = ToPredict;
+    todo = ToPredict;
   }
  
 
